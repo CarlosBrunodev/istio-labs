@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: kiali-ingress
+  namespace: istio-system
+  annotations:
+    kubernetes.io/ingress.class: nginx-internal
+    nginx.ingress.kubernetes.io/auth-signin: https://observability-oauth-sdm.cwp.hpicorp.net/oauth2/start?rd=https://$host$request_uri
+    nginx.ingress.kubernetes.io/auth-url: https://observability-oauth-sdm.cwp.hpicorp.net/oauth2/auth
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+spec:
+  rules:
+  - host: observability-sdm.cwp.hpicorp.net
+    http:
+      paths:
+      - backend:
+          serviceName: kiali
+          servicePort: 20001
+        path: /kiali
+  - host: observability-sdm-us-east-1.cwp.hpicorp.net
+    http:
+      paths:
+      - backend:
+          serviceName: kiali
+          servicePort: 20001
+        path: /kiali
+  - host: observability-kube001.cwp.hpicorp.net
+    http:
+      paths:
+      - backend:
+          serviceName: kiali
+          servicePort: 20001
+        path: /kiali

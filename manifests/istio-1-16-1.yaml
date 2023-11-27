@@ -1,0 +1,249 @@
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  namespace: istio-system
+  name: runtime-istiocontrolplane-1-16-1
+spec:
+  profile: default
+  hub: gcr.io/istio-release
+  tag: 1.16.1
+  revision: 1-16-1
+  meshConfig:
+    accessLogFile: "/dev/stdout"
+    enablePrometheusMerge: true
+    enableTracing: false
+  components:
+    ingressGateways:
+    - name: istio-ingressgateway
+      enabled: true
+      label:
+        istio: ingressgateway
+        app: istio-ingressgateway
+      k8s:
+        imagePullPolicy: IfNotPresent
+        # Istio Ingress resources
+        resources:
+          requests:
+            cpu: 600m
+            memory: 400Mi
+          limits:
+            cpu: 1000m
+            memory: 500Mi
+        hpaSpec:
+          maxReplicas: 8
+          minReplicas: 6
+          scaleTargetRef:
+            apiVersion: apps/v1
+            kind: Deployment
+            name: istio-ingressgateway
+          metrics:
+            - type: Resource
+              resource:
+                name: cpu
+                targetAverageUtilization: 80
+        nodeSelector:
+          "istio-install": "true"
+        tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: sdm-objects-prod
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: sdm-prod
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                      - key: "app"
+                        operator: In
+                        values:
+                        - istio-ingressgateway
+                  topologyKey: "kubernetes.io/hostname"
+        service:
+          ports:
+            ## You can add custom gateway ports in user values overrides, but it must include those ports since helm replaces.
+            # Note that AWS ELB will by default perform health checks on the first port
+            # on this list. Setting this to the health check port will ensure that health
+            # checks always work. https://github.com/istio/istio/issues/12503
+            - port: 15021
+              targetPort: 15021
+              name: status-port
+              protocol: TCP
+            - port: 80
+              targetPort: 8080
+              name: http2
+              protocol: TCP
+            - port: 443
+              targetPort: 8443
+              name: https
+              protocol: TCP
+              # This is the port where sni routing happens
+            - port: 15443
+              targetPort: 15443
+              name: tls
+    - name: istio-ingressgateway-public
+      enabled: true
+      label:
+        istio: istio-ingressgateway-public
+        app: istio-ingressgateway
+      k8s:
+        imagePullPolicy: IfNotPresent
+        # Istio Ingress resources
+        resources:
+          requests:
+            cpu: 600m
+            memory: 400Mi
+          limits:
+            cpu: 1000m
+            memory: 500Mi
+        hpaSpec:
+          maxReplicas: 8
+          minReplicas: 6
+          scaleTargetRef:
+            apiVersion: apps/v1
+            kind: Deployment
+            name: istio-ingressgateway-public
+          metrics:
+            - type: Resource
+              resource:
+                name: cpu
+                targetAverageUtilization: 80
+        nodeSelector:
+          "istio-install": "true"
+        tolerations:
+          - effect: NoSchedule
+            key: dedicated
+            operator: Equal
+            value: sdm-objects-prod
+          - effect: NoSchedule
+            key: dedicated
+            operator: Equal
+            value: sdm-prod
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                      - key: "app"
+                        operator: In
+                        values:
+                          - istio-ingressgateway-public
+                  topologyKey: "kubernetes.io/hostname"
+        service:
+          ports:
+            ## You can add custom gateway ports in user values overrides, but it must include those ports since helm replaces.
+            # Note that AWS ELB will by default perform health checks on the first port
+            # on this list. Setting this to the health check port will ensure that health
+            # checks always work. https://github.com/istio/istio/issues/12503
+            - port: 15021
+              targetPort: 15021
+              name: status-port
+              protocol: TCP
+            - port: 80
+              targetPort: 8080
+              name: http2
+              protocol: TCP
+            - port: 443
+              targetPort: 8443
+              name: https
+              protocol: TCP
+              # This is the port where sni routing happens
+            - port: 15443
+              targetPort: 15443
+              name: tls
+    egressGateways:
+    - name: istio-egressgateway
+      enabled: false
+    pilot:
+      enabled: true
+      k8s:
+        imagePullPolicy: IfNotPresent
+        # Istio Daemon resources
+        resources:
+          requests:
+            cpu: 600m
+            memory: 400Mi
+          limits:
+            cpu: 1000m
+            memory: 500Mi
+        hpaSpec:
+          maxReplicas: 8
+          minReplicas: 6
+          scaleTargetRef:
+            apiVersion: apps/v1
+            kind: Deployment
+            name: istiod-1-16-1
+          metrics:
+            - type: Resource
+              resource:
+                name: cpu
+                targetAverageUtilization: 80
+        nodeSelector:
+          istio-install: "true"
+        tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: sdm-objects-prod
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: sdm-prod
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                      - key: "app"
+                        operator: In
+                        values:
+                        - istiod
+                  topologyKey: "kubernetes.io/hostname"
+  addonComponents:
+    prometheus:
+      enabled: false
+    grafana:
+      enabled: false
+    tracing:
+      enabled: false
+    kiali:
+      enabled: true
+  values:
+    global:
+      istioNamespace: istio-system
+      imagePullPolicy: IfNotPresent
+      # Envoy settings
+      proxy:
+        logLevel: error
+        resources:
+          requests:
+            cpu: 400m
+            memory: 100Mi
+          limits:
+            cpu: 800m
+            memory: 200Mi
+    gateways:
+      istio-ingressgateway:
+        autoscaleEnabled: true
+        name: istio-ingressgateway
+        type: NodePort
+    # kiali:
+    #   hub: quay.io/kiali
+    #   tag: v1.21
+    #   contextPath: /kiali
+    #   dashboard:
+    #     viewOnlyMode: true
+    #     auth:
+    #       strategy: anonymous
+    #     grafanaURL: https://observability-hpid.cd.cwp.hpicorp.net/grafana
+    #     grafanaInClusterURL: http://grafana.observability.svc.cluster.local
+    #   prometheusAddr: http://prometheus-server.observability.svc.cluster.local/prometheus

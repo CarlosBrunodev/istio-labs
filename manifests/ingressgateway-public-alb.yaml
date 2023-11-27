@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingressgateway-public-alb
+  namespace: istio-system
+  annotations:
+    # alb.ingress.kubernetes.io/healthcheck-path:         /healthz/ready
+    # alb.ingress.kubernetes.io/healthcheck-protocol:     HTTP
+    # alb.ingress.kubernetes.io/scheme:                   internet-facing
+    # alb.ingress.kubernetes.io/ssl-policy:               ''
+    # alb.ingress.kubernetes.io/waf-acl-id:               ''
+    # alb.ingress.kubernetes.io/backend-protocol:         HTTPS
+    # alb.ingress.kubernetes.io/certificate-arn:          ''
+    # alb.ingress.kubernetes.io/tags:                     ''
+    # alb.ingress.kubernetes.io/healthcheck-port:         status-port
+    # alb.ingress.kubernetes.io/security-groups:          
+    # alb.ingress.kubernetes.io/load-balancer-attributes: "idle_timeout.timeout_seconds=180"
+    kubernetes.io/ingress.class:                        alb
+spec:
+  rules:
+  - http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: istio-ingressgateway-public
+              port:
+                number: 443
